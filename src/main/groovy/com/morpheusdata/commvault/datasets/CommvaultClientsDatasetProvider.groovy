@@ -67,8 +67,10 @@ class CommvaultClientsDatasetProvider extends AbstractDatasetProvider<ReferenceD
         if (!cloud && cloudId) {
             cloud = morpheus.async.cloud.get(cloudId).blockingGet()
         }
-        if (cloud?.backupProvider) {
-            backupProvider = morpheus.services.backupProvider.find(new DataQuery().withFilter("account", account).withFilter("id", cloud.backupProvider.id))
+        if (cloud?.backupProviders) {
+            def backupProviderIds = cloud.backupProviders.collect { it.id }
+            def backupProviders = morpheus.services.backupProvider.listById(backupProviderIds).toList()
+            backupProvider = backupProviders.find { it.type.code == 'commvault' }
         }
         if (backupProvider) {
             def accessibleResourceIds = morpheus.services.resourcePermission.listAccessibleResources(account.id, ResourcePermission.ResourceType.BackupServer, null, null)
@@ -114,8 +116,10 @@ class CommvaultClientsDatasetProvider extends AbstractDatasetProvider<ReferenceD
         if (!cloud && cloudId) {
             cloud = morpheus.async.cloud.get(cloudId).blockingGet()
         }
-        if (cloud?.backupProvider) {
-            backupProvider = morpheus.services.backupProvider.find(new DataQuery().withFilter("account", account).withFilter("id", cloud.backupProvider.id))
+        if (cloud?.backupProviders) {
+            def backupProviderIds = cloud.backupProviders.collect { it.id }
+            def backupProviders = morpheus.services.backupProvider.listById(backupProviderIds).toList()
+            backupProvider = backupProviders.find { it.type.code == 'commvault' }
         }
         if (backupProvider) {
             def clientResults = list(query).toList().blockingGet()

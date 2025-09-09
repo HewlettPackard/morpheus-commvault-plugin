@@ -61,9 +61,10 @@ class CommvaultStoragePoliciesDatasetProvider extends AbstractDatasetProvider<Re
             cloud = morpheusContext.services.cloud.get(cloudId)
         }
 
-        if (cloud?.backupProvider) {
-            backupProvider = morpheusContext.services.backupProvider.find(new DataQuery().withFilter("account", cloud.account)
-                    .withFilter("id", cloud.backupProvider.id))
+        if (cloud?.backupProviders) {
+            def backupProviderIds = cloud.backupProviders.collect { it.id }
+            def backupProviders = morpheus.services.backupProvider.listById(backupProviderIds).toList()
+            backupProvider = backupProviders.find { it.type.code == 'commvault' }
         }
 
         if (backupProvider) {

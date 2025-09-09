@@ -64,8 +64,10 @@ class CommvaultBackupSetsDatasetProvider extends AbstractDatasetProvider<Referen
         if (!cloud && cloudId) {
             cloud = morpheus.async.cloud.get(cloudId).blockingGet()
         }
-        if (cloud?.backupProvider) {
-            backupProvider = morpheus.services.backupProvider.find(new DataQuery().withFilter("account", account).withFilter("id", cloud.backupProvider.id))
+        if (cloud?.backupProviders) {
+            def backupProviderIds = cloud.backupProviders.collect { it.id }
+            def backupProviders = morpheus.services.backupProvider.listById(backupProviderIds).toList()
+            backupProvider = backupProviders.find { it.type.code == 'commvault' }
         }
         if (backupProvider && clientId) {
             def refData = morpheusContext.services.referenceData.list(new DataQuery()
