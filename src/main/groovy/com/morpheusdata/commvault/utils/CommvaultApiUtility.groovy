@@ -285,7 +285,7 @@ class CommvaultApiUtility {
 			 subClientProperties(){
 				 vmContentOperationType("DELETE")
 				 vmContent(){
-					 children(equalsOrNotEquals: 1, name: vmExternalId, displayName: vmDisplayName, type: vmType)
+					 children(equalsOrNotEquals: 1, name: vmName, displayName: vmDisplayName, type: vmType)
 				 }
 			 }
 		 }
