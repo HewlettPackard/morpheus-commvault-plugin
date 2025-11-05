@@ -15,10 +15,10 @@ class CommvaultApiUtility {
 		authConfig.token = authConfig.token ?: getToken(authConfig.apiUrl, authConfig.username, authConfig.password)?.token
 		def query = ['PseudoClientType': 'VSPseudo'] // only list virtualization clients
 		def results = callApi(authConfig.apiUrl, "${authConfig.basePath}/Client", authConfig.token, [format:'json', query: query], 'GET')
-
+		
 		rtn.success = results?.success
 		if(rtn.success == true) {
-			def response = new groovy.json.JsonSlurper().parseText(results.content)
+			def response = results.data
 			response.VSPseudoClientsList.each { row ->
 				def newClient = [
 					internalId: row.client.clientId,
@@ -59,7 +59,7 @@ class CommvaultApiUtility {
 
 			rtn.success = results?.success
 			if(rtn.success == true) {
-				def response = new groovy.json.JsonSlurper().parseText(results.content)
+				def response = results.data
 				response.subClientProperties.each { row ->
 					def rtnRow = [
 						internalId: row.subClientEntity.subclientId,
@@ -80,7 +80,7 @@ class CommvaultApiUtility {
 					]
 
 					def subclientDetails = callApi(authConfig.apiUrl, "/SearchSvc/CVWebService.svc/Subclient/${row.subClientEntity.subclientId}", authConfig.token, [format:'json'], 'GET')
-					def subclientDetailsResults =  new groovy.json.JsonSlurper().parseText(subclientDetails.content).subClientProperties?.getAt(0)
+					def subclientDetailsResults =  subclientDetails.data.subClientProperties?.getAt(0)
 					rtnRow.storagePolicyId = subclientDetailsResults.commonProperties?.storageDevice?.dataBackupStoragePolicy?.storagePolicyId
 					rtnRow.storagePolicyName = subclientDetailsResults.commonProperties?.storageDevice?.dataBackupStoragePolicy?.storagePolicyName
 					rtnRow.backupsetId = subclientDetailsResults.subClientEntity?.backupsetId
@@ -102,7 +102,7 @@ class CommvaultApiUtility {
 
 		rtn.success = results?.success
 		if(rtn.success == true) {
-			def response = new groovy.json.JsonSlurper().parseText(results.content)
+			def response = results.data
 			response.response.each { row ->
 				// get more info on storage, throwing database connection error
 				// def detailResults = getLibraryDetails(row.entityInfo.id, authConfig, opts)
@@ -125,7 +125,7 @@ class CommvaultApiUtility {
 
 		rtn.success = results?.success
 		if(rtn.success == true) {
-			def response = new groovy.json.JsonSlurper().parseText(results.content)
+			def response = results.data
 			rtn.library = response
 		}
 
@@ -140,7 +140,7 @@ class CommvaultApiUtility {
 
 		rtn.success = results?.success
 		if(rtn.success == true) {
-			def response = new groovy.json.JsonSlurper().parseText(results.content)
+			def response = results.data
 			response.backupsetProperties.each { row ->
 				rtn.backupSets << [
 					internalId: row.backupSetEntity.backupsetId,
@@ -163,7 +163,7 @@ class CommvaultApiUtility {
 
 		rtn.success = results?.success
 		if(rtn.success == true) {
-			def response = new groovy.json.JsonSlurper().parseText(results.content)
+			def response = results.data
 			response.policies.each { row ->
 				rtn.storagePolicies << [
 					internalId: row.storagePolicyId,
@@ -231,7 +231,7 @@ class CommvaultApiUtility {
 
 		rtn.success = results?.success
 		if(rtn.success == true) {
-			def response = new groovy.json.JsonSlurper().parseText(results.content)
+			def response = results.data
 			if(!response.errorCode) {
 				rtn.subclient = response.subClientProperties?.getAt(0)
 				//rtn.statusCode = results.statusCode
@@ -312,7 +312,7 @@ class CommvaultApiUtility {
 		def results = callApi(authConfig.apiUrl, "${authConfig.basePath}/Subclient/${subclientId}", authConfig.token, [format:'json'], 'DELETE')
 		rtn.success = results?.success || results.errorCode == 404
 		if(rtn.success) {
-			def response = new groovy.json.JsonSlurper().parseText(results.content)
+			def response = results.data
 			if(!response.response || response.response.find { it.errorCode != 0 }) {
 				rtn.success = false
 				rtn.msg = "An error occurred removing the backup job"
@@ -331,7 +331,7 @@ class CommvaultApiUtility {
 
 		rtn.success = results?.success
 		if(rtn.success == true) {
-			def response = new groovy.json.JsonSlurper().parseText(results.content)
+			def response = results.data
 			if(response.errorCode && response.errorCode != 0) {
 				rtn.success = false
 				rtn.msg = response.errorMessage
@@ -391,7 +391,7 @@ class CommvaultApiUtility {
 
 		rtn.success = results?.success
 		if(results?.success == true) {
-			def response = new XmlSlurper().parseText(results.content)
+			def response = results.data
 			response.jobs.jobSummary.each { summary ->
 				def subclient = summary.subclient
 				def jobId = summary["@jobId"].toString()
@@ -423,7 +423,7 @@ class CommvaultApiUtility {
 
 		rtn.success = results?.success
 		if(rtn.success == true) {
-			def response = new XmlSlurper().parseText(results.content)
+			def response = results.data
 			rtn.jobId = response.jobIds['@val'].toString()
 		}
 
@@ -438,7 +438,7 @@ class CommvaultApiUtility {
 
 		rtn.success = results?.success
 		if(rtn.success == true) {
-			def response = new XmlSlurper().parseText(results.content)
+			def response = results.data
 			def summary = response.jobs.jobSummary
 
 			jobResult = [
@@ -471,7 +471,7 @@ class CommvaultApiUtility {
 
 		rtn.success = results?.success
 		if(rtn.success == true) {
-			def response = new XmlSlurper().parseText(results.content)
+			def response = results.data
 			def job = response.jobs.find { it.jobSummary["@vsaParentJobID"] == parentJobId }
 
 			if(job) {
@@ -505,7 +505,7 @@ class CommvaultApiUtility {
 
 		rtn.success = results?.success
 		if(rtn.success == true) {
-			def response = new groovy.json.JsonSlurper().parseText(results.content)
+			def response = results.data
 			def item = response.copy.getAt(0)
 			if(item) {
 				rtn.result = item + [
@@ -547,7 +547,7 @@ class CommvaultApiUtility {
 		def results = callApi(authConfig.apiUrl, "${authConfig.basePath}/QCommand", authConfig.token, [format:'text/xml', body: body], 'POST')
 
 		if(results.success) {
-			def contentStr = results.content?.toString().toLowerCase()
+			def contentStr = results.data
 			if(contentStr?.contains("pruned successfully") || contentStr.contains("no jobs to prune")) {
 				rtn.success = true
 			} else {
@@ -564,7 +564,7 @@ class CommvaultApiUtility {
 		def vmQuery = [guid: vmGuid]
 		def vmResults = callApi(authConfig.apiUrl, "${authConfig.basePath}/VM", authConfig.token, [format:'xml', query: vmQuery], 'GET')
 		if(vmResults.success) {
-			def vmResponse = new XmlSlurper().parseText(vmResults?.content)
+			def vmResponse = vmResults.data
 			def clientId = vmResponse.vmStatusInfoList.client['@clientId']
 			if(clientId && clientId != "") {
 				def results = callApi(authConfig.apiUrl, "${authConfig.basePath}/Client/${clientId}", authConfig.token, [format:'xml'], 'DELETE')
@@ -590,7 +590,7 @@ class CommvaultApiUtility {
 		rtn.errorCode = results?.errorCode
 		if(rtn.success == true && (rtn.errorCode == null || rtn.errorCode < 400)) {
 			//
-			def response = results?.content ? new XmlSlurper().parseText(results.content) : null
+			def response = results.data 
 			def responseErrors = response ? response.childNodes().findAll() { it.name == "errList" }.collect { [error: it.attributes.errLogMessage, errorCode: it.attributes.errorCode] } : []
 			if(responseErrors == null || responseErrors?.size() == 0) {
 				def token = response['@token'].toString()
@@ -653,14 +653,6 @@ class CommvaultApiUtility {
 			} else if(opts.format == 'text/xml') {
 				opts.headers['Content-Type'] = 'text/plain'
 				rtn = httpApiClient.callApi(url, path, null, null, requestOpts, method)
-				rtn.data = [:]
-				if(rtn.content?.length() > 0) {
-					try {
-						rtn.data =  new XmlSlurper(false,true).parseText(rtn.content)
-					} catch(e) {
-						log.debug("Error parsing API response XML: ${e}", e)
-					}
-				}
 			} else {
 				rtn = httpApiClient.callXmlApi(url, path, null, null, requestOpts, method)
 			}
