@@ -437,7 +437,7 @@ class CommvaultBackupProvider extends AbstractBackupProvider {
 			def objCategory = "${backupProviderModel.type.code}.backup.backupServer.${backupProviderModel.id}"
 			def removeItems = morpheus.services.referenceData.list(new DataQuery()
 					.withFilter("account.id", backupProviderModel.account.id)
-					.withFilter("catagory", objCategory)
+					.withFilter("category", objCategory)
 			)
 			morpheus.services.referenceData.bulkRemove(removeItems)
 		} catch (Exception e) {
