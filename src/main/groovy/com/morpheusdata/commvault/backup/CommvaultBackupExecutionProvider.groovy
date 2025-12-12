@@ -130,7 +130,11 @@ class CommvaultBackupExecutionProvider implements BackupExecutionProvider {
 			def authConfig = plugin.getAuthConfig(backupProvider)
 
 			def workload = morpheusContext.services.workload.get(backup.containerId)
-			def server = backup.containerId ? workload.server : null
+			def server = backup.containerId ? workload?.server : null
+			// if server doesn't exist check infrastructureConfig for the server map
+			if(!server) {
+				server = backup.getConfigProperty("infrastructureConfig")?.server
+			}
 			if(server) {
 				def subclientId = backup.backupJob?.internalId
 				if(subclientId) {
