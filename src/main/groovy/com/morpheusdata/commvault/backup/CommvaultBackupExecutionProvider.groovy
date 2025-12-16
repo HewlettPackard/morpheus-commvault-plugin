@@ -54,6 +54,16 @@ class CommvaultBackupExecutionProvider implements BackupExecutionProvider {
 		if(config.commvaultClient) {
 			backup.setConfigProperty("commvaultClientId", config.commvaultClient)
 		}
+		def server
+		if(backup.computeServerId) {
+			server = morpheusContext.services.computeServer.get(backup.computeServerId)
+		} else {
+			def workload = morpheusContext.services.workload.get(backup.containerId)
+			server = morpheusContext.services.computeServer.get(workload?.server.id)
+		}
+		if(server) {
+			backup.setConfigProperty("serverExternalId", server.externalId)
+		}
 		return ServiceResponse.success(backup)
 	}
 
@@ -140,7 +150,8 @@ class CommvaultBackupExecutionProvider implements BackupExecutionProvider {
 				if(subclientId) {
 					def subclientResults = CommvaultApiUtility.getSubclient(authConfig, subclientId)
 					if(subclientResults.success) {
-						def subclientVM = subclientResults?.subclient?.vmContent?.children?.find { it.name == server.externalId || it.name == server.internalId }
+						def serverExternalId = server.externalId ?: backup.getConfigProperty("serverExternalId")
+						def subclientVM = subclientResults?.subclient?.vmContent?.children?.find { it.name == serverExternalId || it.name == server.internalId }
 						if(subclientVM) {
 							rtn = CommvaultApiUtility.removeVMFromSubclient(authConfig, subclientId, subclientVM.name, subclientVM.displayName, subclientVM.type)
 							if(rtn.errorCode && !rtn.success) {
