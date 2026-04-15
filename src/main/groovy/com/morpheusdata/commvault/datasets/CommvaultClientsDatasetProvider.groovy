@@ -56,7 +56,7 @@ class CommvaultClientsDatasetProvider extends AbstractDatasetProvider<ReferenceD
         log.debug("clients list: ${query.parameters}")
 
         Long cloudId = query.get("zoneId")?.toLong()
-        Long containerId = query.get("containerId")?.toLong()
+        Long containerId = query.backup?.containerId?.toLong()
         def cloud
         def backupProvider
         def account = query.user.account
@@ -75,14 +75,14 @@ class CommvaultClientsDatasetProvider extends AbstractDatasetProvider<ReferenceD
         if (backupProvider) {
             def accessibleResourceIds = morpheus.services.resourcePermission.listAccessibleResources(account.id, ResourcePermission.ResourceType.BackupServer, null, null)
             def dataQuery = new DataQuery().withFilters([
-                    new DataFilter("account", backupProvider.account),
+                    new DataFilter("account.id", backupProvider.account.id),
                     new DataFilter("category", "${backupProvider.type.code}.backup.backupServer.${backupProvider.id}"),
                     new DataFilter("enabled", true)
             ])
             def dataOrFilter = new DataOrFilter(
-                    new DataFilter("account", account),
+                    new DataFilter("account.id", account.id),
                     new DataAndFilter(
-                            new DataFilter("account.masterAccount", account.masterAccount),
+                            new DataFilter("account.masterAccount", true),
                             new DataFilter("visibility", "public")
                     )
             )
@@ -105,12 +105,12 @@ class CommvaultClientsDatasetProvider extends AbstractDatasetProvider<ReferenceD
         log.debug("clients: ${query.parameters}")
         List clients = []
         Long cloudId = query.get("zoneId")?.toLong()
-        Long containerId = query.get("containerId")?.toLong()
+        Long containerId = query.backup?.containerId?.toLong()
         def cloud
         def backupProvider
         def account = query.user.account
         if (containerId && !cloudId) {
-            def workload = morpheus.services.workload.find(new DataQuery().withFilter("account", account).withFilter("containerId", containerId))
+            def workload = morpheusContext.services.workload.find(new DataQuery().withFilter("account.id", account.id).withFilter("containerId", containerId))
             cloud = workload?.server?.cloud
         }
         if (!cloud && cloudId) {
@@ -123,6 +123,8 @@ class CommvaultClientsDatasetProvider extends AbstractDatasetProvider<ReferenceD
         }
         if (backupProvider) {
             def clientResults = list(query).toList().blockingGet()
+            def cloudType = morpheusContext.async.cloud.type.find(new DataQuery().withFilter('code', cloud?.cloudType?.code)).blockingGet()
+            cloud.cloudType = cloudType
             if (clientResults.size() > 0) {
                 clientResults.each { client ->
                     def clientInstanceType = client.getConfigProperty('vsInstanceType')

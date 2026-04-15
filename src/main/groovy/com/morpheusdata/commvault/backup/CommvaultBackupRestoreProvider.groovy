@@ -316,6 +316,8 @@ class CommvaultBackupRestoreProvider implements BackupRestoreProvider {
 					if (restoreToNew) {
 						// reset cloud-init and reload the local clout-init user data
 						if (server.sourceImage?.isCloudInit && server.serverOs?.platform != 'windows') {
+							// wait for vm to create, might need to change this later
+							sleep(30000)
 							def out = morpheusContext.executeCommandOnServer(server, "sudo cloud-init clean --logs; sudo cloud-init init --local; sync", true, server.sshUsername, server.sshPassword, null, null, null, null, true, true).blockingGet()
 							log.debug("finalizeRestore: out: ${out}")
 							morpheusContext.async.computeServer.restartServer(server.id).subscribe().dispose()

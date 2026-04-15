@@ -46,7 +46,7 @@ class CommvaultStoragePoliciesDatasetProvider extends AbstractDatasetProvider<Re
         log.debug("list: ${datasetQuery.parameters}")
         def tmpAccount = datasetQuery.user.account
         Long cloudId = datasetQuery.get("zoneId")?.toLong()
-        Long containerId = datasetQuery.get("containerId")?.toLong()
+        Long containerId = datasetQuery?.parameters?.backup?.containerId?.toLong()
 
         Cloud cloud = null
         BackupProvider backupProvider = null
@@ -68,8 +68,9 @@ class CommvaultStoragePoliciesDatasetProvider extends AbstractDatasetProvider<Re
         }
 
         if (backupProvider) {
-            return morpheusContext.services.referenceData.list(new DataQuery()
+            def refData = morpheusContext.services.referenceData.list(new DataQuery()
                     .withFilter("category", "${backupProvider?.type?.code}.backup.storagePolicy.${backupProvider?.id}"))
+            return Observable.fromIterable(refData)
         }
 
         return Observable.empty()

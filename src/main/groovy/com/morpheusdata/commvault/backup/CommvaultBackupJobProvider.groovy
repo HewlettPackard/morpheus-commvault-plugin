@@ -79,19 +79,19 @@ class CommvaultBackupJobProvider implements BackupJobProvider {
         try {
             def backupProvider = morpheusContext.services.backupProvider.get(backupJob.backupProvider.id)
             def authConfig = plugin.getAuthConfig(backupProvider)
-            if (opts.commvaultClient) {
+            if (opts.config.commvaultBackupServer) {
                 // clear out the schedule so morpheus doesn't run the job
                 backupJob.scheduleType = null
                 backupJob.nextFire = null
-                def client = morpheusContext.services.referenceData.get(opts.commvaultClient?.toLong())
+                def client = morpheusContext.services.referenceData.get(opts.config.commvaultBackupServer?.toLong())
                 def backupSet
-                if (opts.commvaultBackupSet) {
-                    backupSet = morpheusContext.services.referenceData.get(opts.commvaultBackupSet?.toLong())
+                if (opts.config.commvaultBackupSet) {
+                    backupSet = morpheusContext.services.referenceData.get(opts.config.commvaultBackupSet?.toLong())
                 } else {
                     backupSet = getDefaultBackupSet(backupProvider, client)
                 }
-                if (opts.commvaultStoragePolicy) {
-                    def storagePolicy = morpheusContext.services.referenceData.get(opts.commvaultStoragePolicy?.toLong())
+                if (opts.config.commvaultStoragePolicy) {
+                    def storagePolicy = morpheusContext.services.referenceData.get(opts.config.commvaultStoragePolicy?.toLong())
                     def jobName = backupJob.name + "-${backupJob.account.id}"
                     def result = CommvaultApiUtility.createSubclient(authConfig, client.name, jobName, [backupSet: backupSet, storagePolicy: storagePolicy])
                     log.debug("createBackupJob: createSubclient result: " + result)

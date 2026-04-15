@@ -52,13 +52,14 @@ class CommvaultBackupSetsDatasetProvider extends AbstractDatasetProvider<Referen
     @Override
     Observable<ReferenceData> list(DatasetQuery query) {
         def account = query.user.account
-        def clientId = query.get("clientId")
+        def clientId = query.get("backup.config.commvaultBackupServer")
         def cloud = null
         def backupProvider
-        Long containerId = query.get("containerId")?.toLong()
-        Long cloudId = query.get("zoneId")?.toLong()
+        def containerId = query.backup?.containerId?.toLong()
+        def cloudId = query?.zoneId?.toLong()
+
         if (containerId && !cloudId) {
-            def workload = morpheusContext.services.workload.find(new DataQuery().withFilter("account", account).withFilter("containerId", containerId))
+            def workload = morpheusContext.services.workload.find(new DataQuery().withFilter("account.id", account.id).withFilter("id", containerId))
             cloud = workload?.server?.cloud
         }
         if (!cloud && cloudId) {
@@ -72,8 +73,8 @@ class CommvaultBackupSetsDatasetProvider extends AbstractDatasetProvider<Referen
         if (backupProvider && clientId) {
             def refData = morpheusContext.services.referenceData.list(new DataQuery()
                     .withFilter("category", "${backupProvider.type.code}.backup.backupSet.${backupProvider.id}.${clientId}")
-                    .withFilter("refType", "ReferenceData").withFilter("refId", "clientId"))
-            Observable.fromIterable(refData)
+                    .withFilter("refType", "ReferenceData").withFilter("refId", clientId))
+            return Observable.fromIterable(refData)
         }
         return Observable.empty()
     }

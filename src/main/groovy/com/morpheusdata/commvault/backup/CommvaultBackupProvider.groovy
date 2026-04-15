@@ -229,7 +229,21 @@ class CommvaultBackupProvider extends AbstractBackupProvider {
 	@Override
 	Collection<OptionType> getBackupOptionTypes() {
 		Collection<OptionType> optionTypes = []
-		return optionTypes;
+		optionTypes << new OptionType(
+				code:'backup.commvault.backupServer', inputType:OptionType.InputType.SELECT, name:'commvaultBackupServer', optionSource:'commvaultClients', optionSourceType: 'commvault',
+				fieldName:'commvaultBackupServer', fieldLabel:'Backup Server', fieldContext:'backup.config', required:false, displayOrder:0, noBlank: true
+		)
+
+		optionTypes << new OptionType(
+				code:'backup.commvault.backupSet', inputType:OptionType.InputType.SELECT, name:'commvaultBackupSet', optionSource:'commvaultBackupSets', optionSourceType: 'commvault',
+				fieldName:'commvaultBackupSet', fieldLabel:'Backup Set', fieldContext: 'backup.config', required:false, displayOrder:1, dependsOn: 'backup.commvault.backupServer', noBlank: true
+		)
+
+		optionTypes << new OptionType(
+				code:'backup.commvault.storagePolicy', inputType:OptionType.InputType.SELECT, name:'commvaultStoragePolicy', optionSource:'commvaultStoragePolicies', optionSourceType: 'commvault',
+				fieldName:'commvaultStoragePolicy', fieldLabel:'Storage Policy', fieldContext:'backup.config', required:false,	displayOrder:2, noBlank: true, dependsOn: 'backup.commvault.backupSet'
+		)
+		return optionTypes
 	}
 	
 	/**
