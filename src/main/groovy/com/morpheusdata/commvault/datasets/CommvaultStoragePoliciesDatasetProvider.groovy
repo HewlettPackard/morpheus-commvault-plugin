@@ -118,8 +118,4 @@ class CommvaultStoragePoliciesDatasetProvider extends AbstractDatasetProvider<Re
         return item.id
     }
 
-    @Override
-    boolean isPlugin() {
-        return true
-    }
 }
