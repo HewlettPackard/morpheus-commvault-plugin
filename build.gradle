@@ -110,7 +110,7 @@ jar {
 				'Morpheus-Logo': 'assets/commvault-light.svg',
 				'Morpheus-Logo-Dark': 'assets/commvault-dark.svg',
 				'Morpheus-Labels': 'Plugin, Cloud',
-				'Morpheus-Repo': 'https://github.com/gomorpheus/morpheus-commvault-plugin',
+				'Morpheus-Repo': 'https://github.com/HewlettPackard/morpheus-commvault-plugin',
 				'Morpheus-Min-Appliance-Version': minVersion
 		)
 	}
