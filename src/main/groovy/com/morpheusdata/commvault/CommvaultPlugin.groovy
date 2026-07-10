@@ -16,6 +16,9 @@
 package com.morpheusdata.commvault
 
 import com.morpheusdata.commvault.backup.CommvaultBackupProvider
+import com.morpheusdata.commvault.datasets.CommvaultBackupSetsDatasetProvider
+import com.morpheusdata.commvault.datasets.CommvaultClientsDatasetProvider
+import com.morpheusdata.commvault.datasets.CommvaultStoragePoliciesDatasetProvider
 import com.morpheusdata.commvault.utils.CommvaultApiUtility
 import com.morpheusdata.core.MorpheusContext
 import com.morpheusdata.core.Plugin
@@ -35,6 +38,9 @@ class CommvaultPlugin extends Plugin {
     void initialize() {
         this.setName("Commvault")
         this.registerProvider(new CommvaultBackupProvider(this,this.morpheus))
+        this.registerProvider(new CommvaultClientsDatasetProvider(this,this.morpheus))
+        this.registerProvider(new CommvaultBackupSetsDatasetProvider(this,this.morpheus))
+        this.registerProvider(new CommvaultStoragePoliciesDatasetProvider(this,this.morpheus))
     }
 
     /**
