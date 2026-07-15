@@ -82,7 +82,7 @@ class CommvaultClientsDatasetProvider extends AbstractDatasetProvider<ReferenceD
             def dataOrFilter = new DataOrFilter(
                     new DataFilter("account", account),
                     new DataAndFilter(
-                            new DataFilter("account.masterAccount", account.masterAccount),
+                            new DataFilter("account.masterAccount", true),
                             new DataFilter("visibility", "public")
                     )
             )
