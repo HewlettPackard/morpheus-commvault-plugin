@@ -68,8 +68,9 @@ class CommvaultStoragePoliciesDatasetProvider extends AbstractDatasetProvider<Re
         }
 
         if (backupProvider) {
-            return morpheusContext.services.referenceData.list(new DataQuery()
+            def refData = morpheusContext.services.referenceData.list(new DataQuery()
                     .withFilter("category", "${backupProvider?.type?.code}.backup.storagePolicy.${backupProvider?.id}"))
+            return Observable.fromIterable(refData)
         }
 
         return Observable.empty()
