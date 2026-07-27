@@ -233,13 +233,13 @@ class CommvaultBackupProvider extends AbstractBackupProvider {
 				code:"backupProviderType.commvault.backupServer", inputType:OptionType.InputType.SELECT, name:'backupServer', category:"backupProviderType.commvault",
 				fieldName:'backupServer', fieldCode: 'gomorpheus.optiontype.BackupServer', fieldLabel:'Backup Server', fieldContext:'domain', fieldGroup:'default',
 				required:false, noSelection: false, noBlank: true, enabled:true, editable:true, global:false, placeHolder:null, helpBlock:'', defaultValue:null, custom:false,
-				displayOrder:10, fieldClass:null, optionSource: 'commvaultClients'
+				displayOrder:10, fieldClass:null, optionSource: 'commvaultClients', optionSourceType: getCode()
 		)
 		optionTypes << new OptionType(
 				code:"backupProviderType.commvault.backupSet", inputType:OptionType.InputType.SELECT, name:'backupSet', category:"backupProviderType.commvault",
 				fieldName:'backupSet', fieldCode: 'gomorpheus.optiontype.BackupSet', fieldLabel:'Backup Set', fieldContext:'domain', fieldGroup:'default',
 				required:false,  noSelection: false, noBlank: true, enabled:true, editable:true, global:false, placeHolder:null, helpBlock:'', defaultValue:null, custom:false,
-				displayOrder:20, fieldClass:null, optionSource: 'commvaultBackupSets'
+				displayOrder:20, fieldClass:null, optionSource: 'commvaultBackupSets', optionSourceType: getCode()
 		)
 		optionTypes << new OptionType(
 				code:"backupProviderType.commvault.storagePolicy", inputType:OptionType.InputType.SELECT, name:'storagePolicy', category:"backupProviderType.commvault",
