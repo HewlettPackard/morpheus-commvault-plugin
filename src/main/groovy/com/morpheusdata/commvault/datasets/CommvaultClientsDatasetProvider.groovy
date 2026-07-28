@@ -9,6 +9,7 @@ import com.morpheusdata.model.ReferenceData
 import com.morpheusdata.model.ResourcePermission
 import groovy.util.logging.Slf4j
 import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.internal.operators.observable.ObservableBlockingSubscribe
 
 /**
  * @author rahul.ray
@@ -75,22 +76,23 @@ class CommvaultClientsDatasetProvider extends AbstractDatasetProvider<ReferenceD
         if (backupProvider) {
             def accessibleResourceIds = morpheus.services.resourcePermission.listAccessibleResources(account.id, ResourcePermission.ResourceType.BackupServer, null, null)
             def dataQuery = new DataQuery().withFilters([
-                    new DataFilter("account", backupProvider.account),
+                    new DataFilter("account.id", backupProvider.account.id),
                     new DataFilter("category", "${backupProvider.type.code}.backup.backupServer.${backupProvider.id}"),
                     new DataFilter("enabled", true)
             ])
-            def dataOrFilter = new DataOrFilter(
-                    new DataFilter("account", account),
+            def orFilters = [
+                    new DataFilter("account.id", account.id),
                     new DataAndFilter(
                             new DataFilter("account.masterAccount", true),
                             new DataFilter("visibility", "public")
                     )
-            )
+            ]
             if (accessibleResourceIds) {
-                dataOrFilter.withFilter(new DataFilter("id", "in", accessibleResourceIds))
+                orFilters << new DataFilter("id", "in", accessibleResourceIds)
             }
+            def dataOrFilter = new DataOrFilter(*orFilters)
             dataQuery.withFilter(dataOrFilter)
-            return morpheus.services.referenceData.list(dataQuery)
+            return Observable.fromIterable(morpheus.services.referenceData.list(dataQuery))
         }
         return Observable.empty()
     }
