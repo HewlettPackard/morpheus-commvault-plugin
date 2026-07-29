@@ -71,7 +71,7 @@ class CommvaultClientsDatasetProvider extends AbstractDatasetProvider<ReferenceD
         if (cloud?.backupProviders) {
             def backupProviderIds = cloud.backupProviders.collect { it.id }
             def backupProviders = morpheus.services.backupProvider.listById(backupProviderIds).toList()
-            backupProvider = backupProviders.find { it.type.code == 'commvault' }
+            backupProvider = backupProviders.find { it.type?.code == 'commvault' }
         }
         if (backupProvider) {
             def accessibleResourceIds = morpheus.services.resourcePermission.listAccessibleResources(account.id, ResourcePermission.ResourceType.BackupServer, null, null)
@@ -121,7 +121,7 @@ class CommvaultClientsDatasetProvider extends AbstractDatasetProvider<ReferenceD
         if (cloud?.backupProviders) {
             def backupProviderIds = cloud.backupProviders.collect { it.id }
             def backupProviders = morpheus.services.backupProvider.listById(backupProviderIds).toList()
-            backupProvider = backupProviders.find { it.type.code == 'commvault' }
+            backupProvider = backupProviders.find { it.type?.code == 'commvault' }
         }
         if (backupProvider) {
             def clientResults = list(query).toList().blockingGet()
