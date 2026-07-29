@@ -79,11 +79,11 @@ class CommvaultBackupJobProvider implements BackupJobProvider {
         try {
             def backupProvider = morpheusContext.services.backupProvider.get(backupJob.backupProvider.id)
             def authConfig = plugin.getAuthConfig(backupProvider)
-            if (opts.commvaultClient) {
+            if (opts.commvaultClients) {
                 // clear out the schedule so morpheus doesn't run the job
                 backupJob.scheduleType = null
                 backupJob.nextFire = null
-                def client = morpheusContext.services.referenceData.get(opts.commvaultClient?.toLong())
+                def client = morpheusContext.services.referenceData.get(opts.commvaultClients?.toLong())
                 def backupSet
                 if (opts.commvaultBackupSet) {
                     backupSet = morpheusContext.services.referenceData.get(opts.commvaultBackupSet?.toLong())
@@ -134,7 +134,7 @@ class CommvaultBackupJobProvider implements BackupJobProvider {
         try {
             def backupProvider = morpheusContext.services.backupProvider.get(backupJob.backupProvider.id)
             def sourceJobConfigMap = sourceBackupJob.getConfigMap()
-            opts.commvaultClient = morpheusContext.async.referenceData.find(new DataQuery().withFilters(
+            opts.commvaultClients = morpheusContext.async.referenceData.find(new DataQuery().withFilters(
                     [
                             new DataFilter('account.id', backupJob.account.id),
                             new DataFilter('category', "${backupProvider.type.code}.backup.backupServer.${backupProvider.id}"),
@@ -144,7 +144,7 @@ class CommvaultBackupJobProvider implements BackupJobProvider {
             opts.commvaultBackupSet = morpheusContext.async.referenceData.find(new DataQuery().withFilters(
                     [
                             new DataFilter('account.id', backupJob.account.id),
-                            new DataFilter('category', "${backupProvider.type.code}.backup.backupSet.${backupProvider.id}.${opts.commvaultClient}"),
+                            new DataFilter('category', "${backupProvider.type.code}.backup.backupSet.${backupProvider.id}.${opts.commvaultClients}"),
                             new DataFilter('internalId', (sourceJobConfigMap.backupSetId ?: sourceJobConfigMap.backupsetId))
                     ]
             )).blockingGet()?.id
