@@ -231,26 +231,26 @@ class CommvaultBackupProvider extends AbstractBackupProvider {
 		Collection<OptionType> optionTypes = new ArrayList()
 
 		// TODO: add option types for backup server, backup set, and storage policy to localization files
-		String selectBackupServer = morpheus.services.localization.get('gomorpheus.error.selectBackupServer',null, 'Select a backup server')
-		String selectBackupSet = morpheus.services.localization.get('gomorpheus.error.selectBackupSet',null, 'Select a backup set')
-		String selectStoragePolicy = morpheus.services.localization.get('gomorpheus.error.selectStoragePolicy',null, 'Select a storage policy')
+		//String selectBackupServer = morpheus.services.localization.get('gomorpheus.error.selectBackupServer',null, 'Select a backup server')
+		//String selectBackupSet = morpheus.services.localization.get('gomorpheus.error.selectBackupSet',null, 'Select a backup set')
+		//String selectStoragePolicy = morpheus.services.localization.get('gomorpheus.error.selectStoragePolicy',null, 'Select a storage policy')
 
 		optionTypes << new OptionType(
 				code:"backupProviderType.commvault.backupServer", inputType:OptionType.InputType.SELECT, name:'backupServer', category:"backupProviderType.commvault",
 				fieldName:'backupServer', fieldCode: 'gomorpheus.optiontype.BackupServer', fieldLabel:'Backup Server', fieldContext:'domain', fieldGroup:'default',
-				required:false, noSelection: false, noBlank: true, enabled:true, editable:true, global:false, placeHolder:null, helpBlock: selectBackupServer, defaultValue:null, custom:false,
+				required:true, noSelection: false, noBlank: true, enabled:true, editable:true, global:false, placeHolder:null, helpBlock: '', defaultValue:null, custom:false,
 				displayOrder:10, fieldClass:null, optionSource: 'commvaultClients', optionSourceType: getCode()
 		)
 		optionTypes << new OptionType(
 				code:"backupProviderType.commvault.backupSet", inputType:OptionType.InputType.SELECT, name:'backupSet', category:"backupProviderType.commvault",
 				fieldName:'backupSet', fieldCode: 'gomorpheus.optiontype.BackupSet', fieldLabel:'Backup Set', fieldContext:'domain', fieldGroup:'default',
-				required:false,  noSelection: false, noBlank: true, enabled:true, editable:true, global:false, placeHolder:null, helpBlock:selectBackupSet, defaultValue:null, custom:false,
+				required:false,  noSelection: false, noBlank: true, enabled:true, editable:true, global:false, placeHolder:null, helpBlock: '', defaultValue:null, custom:false,
 				displayOrder:20, fieldClass:null, optionSource: 'commvaultBackupSets', optionSourceType: getCode()
 		)
 		optionTypes << new OptionType(
 				code:"backupProviderType.commvault.storagePolicy", inputType:OptionType.InputType.SELECT, name:'storagePolicy', category:"backupProviderType.commvault",
 				fieldName:'storagePolicy', fieldCode: 'gomorpheus.optiontype.StoragePolicy', fieldLabel:'Storage Policy', fieldContext:'domain', fieldGroup:'default',
-				required:false, noSelection: false, noBlank: true,  enabled:true, editable:true, global:false, placeHolder:null, helpBlock:selectStoragePolicy, defaultValue:null, custom:false,
+				required:false, noSelection: false, noBlank: true,  enabled:true, editable:true, global:false, placeHolder:null, helpBlock: '', defaultValue:null, custom:false,
 				displayOrder:30, fieldClass:null, optionSource: 'commvaultStoragePolicies', optionSourceType: getCode()
 		)
 		return optionTypes
