@@ -90,7 +90,9 @@ class CommvaultClientsDatasetProvider extends AbstractDatasetProvider<ReferenceD
                 dataOrFilter.withFilter(new DataFilter("id", "in", accessibleResourceIds))
             }
             dataQuery.withFilter(dataOrFilter)
-            return morpheus.services.referenceData.list(dataQuery)
+            // NOTE: services.referenceData.list() is the synchronous facade and returns a blocking List,
+            // not an Observable - use the async accessor here to match this method's declared return type.
+            return morpheus.async.referenceData.list(dataQuery)
         }
         return Observable.empty()
     }

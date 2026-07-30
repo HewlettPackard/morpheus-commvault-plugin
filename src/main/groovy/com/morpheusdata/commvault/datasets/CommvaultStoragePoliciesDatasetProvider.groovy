@@ -68,7 +68,9 @@ class CommvaultStoragePoliciesDatasetProvider extends AbstractDatasetProvider<Re
         }
 
         if (backupProvider) {
-            return morpheusContext.services.referenceData.list(new DataQuery()
+            // NOTE: services.referenceData.list() is the synchronous facade and returns a blocking List,
+            // not an Observable - use the async accessor here to match this method's declared return type.
+            return morpheusContext.async.referenceData.list(new DataQuery()
                     .withFilter("category", "${backupProvider?.type?.code}.backup.storagePolicy.${backupProvider?.id}"))
         }
 

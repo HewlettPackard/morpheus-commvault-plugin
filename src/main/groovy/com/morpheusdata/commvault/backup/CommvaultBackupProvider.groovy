@@ -228,7 +228,27 @@ class CommvaultBackupProvider extends AbstractBackupProvider {
 	 */
 	@Override
 	Collection<OptionType> getBackupOptionTypes() {
-		Collection<OptionType> optionTypes = []
+		Collection<OptionType> optionTypes = new ArrayList();
+		optionTypes << new OptionType(
+				code:"backupOptionType.commvault.client", inputType:OptionType.InputType.SELECT, name:'client', category:"backupOptionType.commvault",
+				fieldName:'commvaultClient', fieldCode:'gomorpheus.label.backupServer', fieldLabel:'Backup Server', fieldContext:'domain', fieldGroup:'default',
+				required:true, noSelection: false, noBlank: true, enabled:true, editable:true, global:false, placeHolder:null, helpBlock:'', defaultValue:null, custom:false,
+				displayOrder:10, fieldClass:null, optionSource:'commvaultClients', optionSourceType:'commvault'
+		)
+		optionTypes << new OptionType(
+				code:"backupOptionType.commvault.backupSet", inputType:OptionType.InputType.SELECT, name:'backupSet', category:"backupOptionType.commvault",
+				fieldName:'commvaultBackupSet', fieldCode:'gomorpheus.label.backupSet', fieldLabel:'Backup Set', fieldContext:'domain', fieldGroup:'default',
+				required:false, noSelection: false, noBlank: true, enabled:true, editable:true, global:false, placeHolder:null, helpBlock:'', defaultValue:null, custom:false,
+				displayOrder:20, fieldClass:null, optionSource:'commvaultBackupSets', optionSourceType:'commvault',
+				requireOnCode:'backup.jobAction:new', dependsOn:'commvaultClient'
+		)
+		optionTypes << new OptionType(
+				code:"backupOptionType.commvault.storagePolicy", inputType:OptionType.InputType.SELECT, name:'storagePolicy', category:"backupOptionType.commvault",
+				fieldName:'commvaultStoragePolicy', fieldCode:'gomorpheus.label.storagePolicy', fieldLabel:'Storage Policy', fieldContext:'domain', fieldGroup:'default',
+				required:false, noSelection: false, noBlank: true, enabled:true, editable:true, global:false, placeHolder:null, helpBlock:'', defaultValue:null, custom:false,
+				displayOrder:30, fieldClass:null, optionSource:'commvaultStoragePolicies', optionSourceType:'commvault',
+				requireOnCode:'backup.jobAction:new'
+		)
 		return optionTypes;
 	}
 	
