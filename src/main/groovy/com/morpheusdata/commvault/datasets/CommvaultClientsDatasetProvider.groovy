@@ -131,11 +131,10 @@ class CommvaultClientsDatasetProvider extends AbstractDatasetProvider<ReferenceD
                     def clientInstanceTypeCode = clientInstanceType ? CommvaultReferenceUtility.getvsInstanceType(clientInstanceType?.toString()) : null
                     if (!cloud || cloud?.cloudType?.provisionTypes?.find { it.code == clientInstanceTypeCode }) {
                         clients << [name: client.name, id: client.id, value: client.id]
-                    } else {
-                        clients << [name: "Clients not available for this cloud type", id: '']
                     }
                 }
-            } else {
+            }
+            if(clients.isEmpty()) {
                 clients << [name: "No clients setup in Commvault", id: '']
             }
         } else {
