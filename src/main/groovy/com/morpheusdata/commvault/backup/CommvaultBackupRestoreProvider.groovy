@@ -263,6 +263,9 @@ class CommvaultBackupRestoreProvider implements BackupRestoreProvider {
 						rtn.data.backupRestore.duration = (start && end) ? (end - start) : 0
 					}
 					rtn.data.backupRestore.status = restoreStatus
+					if(restoreSession.errorMessage) {
+						rtn.data.backupRestore.errorMessage = restoreSession.errorMessage
+					}
 					morpheusContext.services.backup.backupRestore.save(rtn.data.backupRestore)
 				}
 				updateInstanceStatus(rtn.data.backupRestore)

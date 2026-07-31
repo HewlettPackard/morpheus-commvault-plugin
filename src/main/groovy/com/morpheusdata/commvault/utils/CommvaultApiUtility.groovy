@@ -451,7 +451,8 @@ class CommvaultApiUtility {
 				result: summary["@status"].toString(),
 				status: summary["@status"].toString(),
 				progress: summary["@percentComplete"].toString(),
-				totalSize: (summary["@sizeOfApplication"].toString().isNumber() ? summary["@sizeOfApplication"] : 0)?.toLong()
+				totalSize: (summary["@sizeOfApplication"].toString().isNumber() ? summary["@sizeOfApplication"] : 0)?.toLong(),
+				errorMessage: formatJobError(summary["@pendingReason"].toString(), summary["@pendingReasonErrorCode"].toString())
 			]
 		}
 
@@ -485,7 +486,8 @@ class CommvaultApiUtility {
 					result: job.jobSummary["@status"].toString(),
 					status: job.jobSummary["@status"].toString(),
 					progress: job.jobSummary["@percentComplete"].toString(),
-					totalSize: (job.jobSummary["@sizeOfApplication"].toString().isNumber() ? job.jobSummary["@sizeOfApplication"] : 0)?.toLong()
+					totalSize: (job.jobSummary["@sizeOfApplication"].toString().isNumber() ? job.jobSummary["@sizeOfApplication"] : 0)?.toLong(),
+					errorMessage: formatJobError(job.jobSummary["@pendingReason"].toString(), job.jobSummary["@pendingReasonErrorCode"].toString())
 				]
 				if( job.jobSummary["@vsaParentJobID"]) {
 					result.parentJobId = job.jobSummary["@vsaParentJobID"].toString()
@@ -498,8 +500,19 @@ class CommvaultApiUtility {
 		return rtn
 	}
 
-	static getStoragePolicyCopy(authConfig, storagePolicyId){
-		def rtn = [success:true]
+	/**
+	 * Commvault reports why a job failed or is pending in pendingReason, which carries html line breaks and an
+	 * optional error code. Flatten it into a single line suitable for the backup result error output.
+	 */
+	static String formatJobError(String pendingReason, String errorCode) {
+		if(!pendingReason) {
+			return null
+		}
+		def message = pendingReason.replaceAll(/<br\s*\/?>/, ' ').replaceAll(/\s+/, ' ').trim()
+		return errorCode ? "${message} (${errorCode})" : message
+	}
+
+	static getStoragePolicyCopy(authConfig, storagePolicyId){		def rtn = [success:true]
 		authConfig.token = authConfig.token ?: getToken(authConfig.apiUrl, authConfig.username, authConfig.password)?.token
 		def results = callApi(authConfig.apiUrl, "${authConfig.basePath}/StoragePolicy/${storagePolicyId}", authConfig.token, [format:'json'], 'GET')
 
