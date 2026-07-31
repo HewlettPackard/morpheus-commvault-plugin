@@ -240,7 +240,7 @@ class CommvaultBackupProvider extends AbstractBackupProvider {
 				fieldName:'commvaultBackupSet', fieldCode:'gomorpheus.label.backupSet', fieldLabel:'Backup Set', fieldContext:'domain', fieldGroup:'default',
 				required:false, noSelection: false, noBlank: true, enabled:true, editable:true, global:false, placeHolder:null, helpBlock:'', defaultValue:null, custom:false,
 				displayOrder:20, fieldClass:null, optionSource:'commvaultBackupSets', optionSourceType:'commvault',
-				requireOnCode:'backup.jobAction:new', dependsOn:'commvaultClient'
+				requireOnCode:'backup.jobAction:new', dependsOn:'backupOptionType.commvault.client'
 		)
 		optionTypes << new OptionType(
 				code:"backupOptionType.commvault.storagePolicy", inputType:OptionType.InputType.SELECT, name:'storagePolicy', category:"backupOptionType.commvault",
