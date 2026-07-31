@@ -55,32 +55,21 @@ class CommvaultClientsDatasetProvider extends AbstractDatasetProvider<ReferenceD
     Observable<ReferenceData> list(DatasetQuery query) {
         log.debug("clients list: ${query.parameters}")
 
-        Long cloudId = query.get("zoneId")?.toLong()
-        Long containerId = query.get("containerId")?.toLong()
-        def cloud
-        def backupProvider
         def account = query.user.account
-        if (containerId && !cloudId) {
-            def workload = morpheus.services.workload.find(new DataQuery().withFilter("account", account).withFilter("containerId", containerId))
-            cloud = workload?.server?.cloud
-        }
-        if (!cloud && cloudId) {
-            cloud = morpheus.async.cloud.get(cloudId).blockingGet()
-        }
-        if (cloud?.backupProviders) {
-            def backupProviderIds = cloud.backupProviders.collect { it.id }
-            def backupProviders = morpheus.services.backupProvider.listById(backupProviderIds).toList()
-            backupProvider = backupProviders.find { it.type?.code == 'commvault' }
-        }
+        def cloud = CommvaultDatasetUtility.resolveCloud(morpheus, query, account)
+        def backupProvider = CommvaultDatasetUtility.resolveBackupProvider(morpheus, cloud, account)
         if (backupProvider) {
             def accessibleResourceIds = morpheus.services.resourcePermission.listAccessibleResources(account.id, ResourcePermission.ResourceType.BackupServer, null, null)
             def dataQuery = new DataQuery().withFilters([
-                    new DataFilter("account", backupProvider.account),
+                    new DataFilter("account.id", backupProvider.account.id),
                     new DataFilter("category", "${backupProvider.type.code}.backup.backupServer.${backupProvider.id}"),
                     new DataFilter("enabled", true)
             ])
+            // filter on account.id rather than the account object: mixing an object valued "account" filter with
+            // the nested "account.masterAccount" filter inside the same or-clause produces a query that matches
+            // nothing, which silently emptied this option source.
             def dataOrFilter = new DataOrFilter(
-                    new DataFilter("account", account),
+                    new DataFilter("account.id", account.id),
                     new DataAndFilter(
                             new DataFilter("account.masterAccount", true),
                             new DataFilter("visibility", "public")
@@ -106,30 +95,16 @@ class CommvaultClientsDatasetProvider extends AbstractDatasetProvider<ReferenceD
     Observable<Map> listOptions(DatasetQuery query) {
         log.debug("clients: ${query.parameters}")
         List clients = []
-        Long cloudId = query.get("zoneId")?.toLong()
-        Long containerId = query.get("containerId")?.toLong()
-        def cloud
-        def backupProvider
         def account = query.user.account
-        if (containerId && !cloudId) {
-            def workload = morpheus.services.workload.find(new DataQuery().withFilter("account", account).withFilter("containerId", containerId))
-            cloud = workload?.server?.cloud
-        }
-        if (!cloud && cloudId) {
-            cloud = morpheus.async.cloud.get(cloudId).blockingGet()
-        }
-        if (cloud?.backupProviders) {
-            def backupProviderIds = cloud.backupProviders.collect { it.id }
-            def backupProviders = morpheus.services.backupProvider.listById(backupProviderIds).toList()
-            backupProvider = backupProviders.find { it.type?.code == 'commvault' }
-        }
+        def cloud = CommvaultDatasetUtility.resolveCloud(morpheus, query, account)
+        def backupProvider = CommvaultDatasetUtility.resolveBackupProvider(morpheus, cloud, account)
         if (backupProvider) {
             def clientResults = list(query).toList().blockingGet()
             if (clientResults.size() > 0) {
                 clientResults.each { client ->
                     def clientInstanceType = client.getConfigProperty('vsInstanceType')
                     def clientInstanceTypeCode = clientInstanceType ? CommvaultReferenceUtility.getvsInstanceType(clientInstanceType?.toString()) : null
-                    if (!cloud || cloud?.cloudType?.provisionTypes?.find { it.code == clientInstanceTypeCode }) {
+                    if (clientMatchesCloud(cloud, clientInstanceTypeCode)) {
                         clients << [name: client.name, id: client.id, value: client.id]
                     }
                 }
@@ -140,6 +115,23 @@ class CommvaultClientsDatasetProvider extends AbstractDatasetProvider<ReferenceD
             clients << [name: "No Commvault backup provider found.", id: '']
         }
         return Observable.fromIterable(clients)
+    }
+
+    /**
+     * Only offer clients whose commvault virtualization type matches the cloud being backed up. The cloud model
+     * handed to a dataset provider does not carry its cloud type's provision types, so fall back to matching on
+     * the cloud type code and keep the client when neither side gives us anything to compare.
+     */
+    private static boolean clientMatchesCloud(cloud, String clientInstanceTypeCode) {
+        if (!cloud || !clientInstanceTypeCode) {
+            return true
+        }
+        def provisionTypeCodes = cloud.cloudType?.provisionTypes?.collect { it.code }
+        if (provisionTypeCodes) {
+            return provisionTypeCodes.contains(clientInstanceTypeCode)
+        }
+        String cloudTypeCode = cloud.cloudType?.code
+        return cloudTypeCode ? cloudTypeCode.toLowerCase().contains(clientInstanceTypeCode.toLowerCase()) : true
     }
 
     /**

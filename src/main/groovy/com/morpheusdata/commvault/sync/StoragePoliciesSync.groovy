@@ -51,12 +51,12 @@ class StoragePoliciesSync {
                     morpheus.services.referenceData.bulkRemove(removeItems)
                 }.onAdd { itemsToAdd ->
                     addMissingStoragePolicies(itemsToAdd)
-                }.withLoadObjectDetails { List<SyncTask.UpdateItemDto<ReferenceDataSyncProjection, Map>> updateItems ->
-                    Map<Long, SyncTask.UpdateItemDto<ReferenceDataSyncProjection, Map>> updateItemMap = updateItems.collectEntries { [(it.existingItem.id): it] }
-                    morpheus.async.referenceData.listById(updateItems?.collect { it.existingItem.id }).map { ReferenceData referenceData ->
-                        SyncTask.UpdateItemDto<ReferenceDataSyncProjection, Map> matchItem = updateItemMap[referenceData.id]
-                        return new SyncTask.UpdateItem<ReferenceData, Map>(existingItem: referenceData, masterItem: matchItem.masterItem)
-                    }
+                }.withLoadObjectDetailsFromFinder { List<SyncTask.UpdateItemDto<ReferenceDataSyncProjection, Map>> updateItems ->
+                    // load the full records through list() rather than listById() - listById does a flat bind that
+                    // drops the account association, which the subsequent save would then persist as a null and
+                    // orphan every storage policy from its tenant.
+                    return morpheus.async.referenceData.list(new DataQuery()
+                            .withFilter('id', 'in', updateItems.collect { it.existingItem.id }))
                 }.onUpdate { updateList ->
                     updateMatchedStoragePolicies(updateList)
                 }.start()

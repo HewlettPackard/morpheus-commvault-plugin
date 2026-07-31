@@ -56,22 +56,8 @@ class CommvaultBackupSetsDatasetProvider extends AbstractDatasetProvider<Referen
         // full dotted name (e.g. "backup.commvaultClient"), not the plain "clientId" the legacy
         // automation.hbs wiring remaps to via data-option-source-depends-on-param - accept both.
         def clientId = query.get("clientId") ?: query.get("backup.commvaultClient")
-        def cloud = null
-        def backupProvider
-        Long containerId = query.get("containerId")?.toLong()
-        Long cloudId = query.get("zoneId")?.toLong()
-        if (containerId && !cloudId) {
-            def workload = morpheusContext.services.workload.find(new DataQuery().withFilter("account", account).withFilter("containerId", containerId))
-            cloud = workload?.server?.cloud
-        }
-        if (!cloud && cloudId) {
-            cloud = morpheus.async.cloud.get(cloudId).blockingGet()
-        }
-        if (cloud?.backupProviders) {
-            def backupProviderIds = cloud.backupProviders.collect { it.id }
-            def backupProviders = morpheus.services.backupProvider.listById(backupProviderIds).toList()
-            backupProvider = backupProviders.find { it.type?.code == 'commvault' }
-        }
+        def cloud = CommvaultDatasetUtility.resolveCloud(morpheusContext, query, account)
+        def backupProvider = CommvaultDatasetUtility.resolveBackupProvider(morpheusContext, cloud, account)
         if (backupProvider && clientId) {
             // NOTE: services.referenceData.list() is the synchronous facade and returns a blocking List,
             // not an Observable - use the async accessor here to match this method's declared return type.
