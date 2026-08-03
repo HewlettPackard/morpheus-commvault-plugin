@@ -51,8 +51,8 @@ class CommvaultBackupExecutionProvider implements BackupExecutionProvider {
 	@Override
 	ServiceResponse configureBackup(Backup backup, Map config, Map opts) {
 		log.debug("configureBackup: {}, {}, {}", backup, config, opts)
-		if(config.commvaultClients) {
-			backup.setConfigProperty("commvaultClientId", config.commvaultClients)
+		if(config.commvaultClient) {
+			backup.setConfigProperty("commvaultClientId", config.commvaultClient)
 		}
 		def server
 		if(backup.computeServerId) {
