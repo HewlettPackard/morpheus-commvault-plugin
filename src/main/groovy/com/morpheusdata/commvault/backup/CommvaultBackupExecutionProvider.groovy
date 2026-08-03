@@ -446,6 +446,11 @@ class CommvaultBackupExecutionProvider implements BackupExecutionProvider {
 			if(backupJob) {
 				rtn.data.backupResult.status = CommvaultReferenceUtility.getBackupStatus(backupJob.result)
 				rtn.data.backupResult.sizeInMb = (backupJob.totalSize ?: 0 )/ ComputeUtility.ONE_MEGABYTE
+				// commvault only explains a failed or stalled job in pendingReason, so carry it through or the
+				// backup result shows a bare "Failed" with no indication of what went wrong.
+				if(backupJob.errorMessage) {
+					rtn.data.backupResult.errorOutput = backupJob.errorMessage
+				}
 				def startDate = backupJob.startTime
 				def endDate = backupJob.endTime
 				if(startDate && endDate) {

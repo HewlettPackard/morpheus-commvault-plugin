@@ -9,7 +9,6 @@ import com.morpheusdata.core.providers.AbstractDatasetProvider
 import com.morpheusdata.model.BackupProvider
 import com.morpheusdata.model.Cloud
 import com.morpheusdata.model.ReferenceData
-import com.morpheusdata.model.Workload
 import groovy.util.logging.Slf4j
 import io.reactivex.rxjava3.core.Observable
 
@@ -45,32 +44,14 @@ class CommvaultStoragePoliciesDatasetProvider extends AbstractDatasetProvider<Re
     Observable list(DatasetQuery datasetQuery) {
         log.debug("list: ${datasetQuery.parameters}")
         def tmpAccount = datasetQuery.user.account
-        Long cloudId = datasetQuery.get("zoneId")?.toLong()
-        Long containerId = datasetQuery.get("containerId")?.toLong()
-
-        Cloud cloud = null
-        BackupProvider backupProvider = null
-
-        if (containerId && !cloudId) {
-            Workload workload = morpheusContext.services.workload.find(new DataQuery().withFilter("account", tmpAccount)
-                    .withFilter("containerId", containerId))
-            cloud = workload?.server?.cloud
-        }
-
-        if (!cloud && cloudId) {
-            cloud = morpheusContext.services.cloud.get(cloudId)
-        }
-
-        if (cloud?.backupProviders) {
-            def backupProviderIds = cloud.backupProviders.collect { it.id }
-            def backupProviders = morpheus.services.backupProvider.listById(backupProviderIds).toList()
-            backupProvider = backupProviders.find { it.type?.code == 'commvault' }
-        }
+        Cloud cloud = CommvaultDatasetUtility.resolveCloud(morpheusContext, datasetQuery, tmpAccount)
+        BackupProvider backupProvider = CommvaultDatasetUtility.resolveBackupProvider(morpheusContext, cloud, tmpAccount)
 
         if (backupProvider) {
-            def refData = morpheusContext.services.referenceData.list(new DataQuery()
+            // NOTE: services.referenceData.list() is the synchronous facade and returns a blocking List,
+            // not an Observable - use the async accessor here to match this method's declared return type.
+            return morpheusContext.async.referenceData.list(new DataQuery()
                     .withFilter("category", "${backupProvider?.type?.code}.backup.storagePolicy.${backupProvider?.id}"))
-            return Observable.fromIterable(refData)
         }
 
         return Observable.empty()

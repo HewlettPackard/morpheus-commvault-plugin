@@ -52,28 +52,18 @@ class CommvaultBackupSetsDatasetProvider extends AbstractDatasetProvider<Referen
     @Override
     Observable<ReferenceData> list(DatasetQuery query) {
         def account = query.user.account
-        def clientId = query.get("clientId")
-        def cloud = null
-        def backupProvider
-        Long containerId = query.get("containerId")?.toLong()
-        Long cloudId = query.get("zoneId")?.toLong()
-        if (containerId && !cloudId) {
-            def workload = morpheusContext.services.workload.find(new DataQuery().withFilter("account", account).withFilter("containerId", containerId))
-            cloud = workload?.server?.cloud
-        }
-        if (!cloud && cloudId) {
-            cloud = morpheus.async.cloud.get(cloudId).blockingGet()
-        }
-        if (cloud?.backupProviders) {
-            def backupProviderIds = cloud.backupProviders.collect { it.id }
-            def backupProviders = morpheus.services.backupProvider.listById(backupProviderIds).toList()
-            backupProvider = backupProviders.find { it.type?.code == 'commvault' }
-        }
+        // the generic option-type dependsOn cascade resubmits the whole form keyed by each field's
+        // full dotted name (e.g. "backup.commvaultClient"), not the plain "clientId" the legacy
+        // automation.hbs wiring remaps to via data-option-source-depends-on-param - accept both.
+        def clientId = query.get("clientId") ?: query.get("backup.commvaultClient")
+        def cloud = CommvaultDatasetUtility.resolveCloud(morpheusContext, query, account)
+        def backupProvider = CommvaultDatasetUtility.resolveBackupProvider(morpheusContext, cloud, account)
         if (backupProvider && clientId) {
-            def refData = morpheusContext.services.referenceData.list(new DataQuery()
+            // NOTE: services.referenceData.list() is the synchronous facade and returns a blocking List,
+            // not an Observable - use the async accessor here to match this method's declared return type.
+            return morpheusContext.async.referenceData.list(new DataQuery()
                     .withFilter("category", "${backupProvider.type.code}.backup.backupSet.${backupProvider.id}.${clientId}")
-                    .withFilter("refType", "ReferenceData").withFilter("refId", "clientId"))
-            Observable.fromIterable(refData)
+                    .withFilter("refType", "ReferenceData").withFilter("refId", clientId))
         }
         return Observable.empty()
     }
