@@ -149,6 +149,18 @@ class CommvaultBackupProvider extends AbstractBackupProvider {
 	@Override
 	public Boolean getHasRetentionCount() { return false; }
 
+	/**
+	 * The backup provider supports running a backup on demand.
+	 */
+	@Override
+	public Boolean getHasRunJob() { return true; }
+
+	/**
+	 * Commvault owns the backup job code, so it must not be edited from the Morpheus UI.
+	 */
+	@Override
+	public Boolean getHasEditableJobCode() { return false; }
+
 	@Override
 	Boolean getHasServers() { return true }
 
