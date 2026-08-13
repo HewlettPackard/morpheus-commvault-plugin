@@ -52,6 +52,9 @@ class CommvaultPlugin extends Plugin {
     }
 
     def getAuthConfig(BackupProvider backupProvider) {
+        if(!backupProvider) {
+            return [apiUrl: null, username: null, password: null, basePath: apiBasePath]
+        }
         //credentials
         backupProvider = loadCredentials(backupProvider)
         def rtn = [
@@ -68,7 +71,7 @@ class CommvaultPlugin extends Plugin {
     }
 
     BackupProvider loadCredentials(BackupProvider backupProvider) {
-        if(!backupProvider.credentialLoaded) {
+        if(backupProvider && !backupProvider.credentialLoaded) {
             AccountCredential accountCredential
             accountCredential = this.morpheus.services.accountCredential.loadCredentials(backupProvider)
             backupProvider.credentialLoaded = true

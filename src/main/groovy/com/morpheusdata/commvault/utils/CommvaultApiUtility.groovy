@@ -43,7 +43,7 @@ class CommvaultApiUtility {
 	}
 
 	static getApiUrl(BackupProvider backupProvider) {
-		def scheme = backupProvider.host.contains("http") ? "" : "http://"
+		def scheme = backupProvider.host?.contains("http") ? "" : "http://"
 		def apiUrl = "${scheme}${backupProvider.host}:${backupProvider.port}"
 
 		return apiUrl
@@ -593,6 +593,11 @@ class CommvaultApiUtility {
 
 	static getToken(url, username, password) {
 		def rtn = [success:false]
+		if(!username || !password) {
+			rtn.msg = 'Commvault username/password are not configured for this backup provider'
+			log.error("Unable to fetch commvault token: ${rtn.msg}")
+			return rtn
+		}
 		password = password.getBytes().encodeBase64().toString()
 		def requestWriter = new StringWriter()
 		def xml = new groovy.xml.MarkupBuilder(requestWriter)

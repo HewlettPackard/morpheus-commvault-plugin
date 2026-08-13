@@ -40,6 +40,38 @@ class CommvaultBackupExecutionProvider implements BackupExecutionProvider {
 	}
 
 	/**
+	 * Reload the backup's associated BackupProvider with the host/port/username/password/credential fields fully
+	 * hydrated. Accessing backup.backupProvider directly can return a proxy whose non-joined fields (host, port,
+	 * username, password) come back null, so the backupProvider is re-fetched via an explicit join. Falls back to
+	 * the in-memory association (and a plain id-based lookup) since a freshly created backup may not yet be visible
+	 * to an independent query within the same request.
+	 */
+	private BackupProvider resolveBackupProvider(Backup backup) {
+		def backupProvider = backup?.backupProvider
+		if(!backupProvider?.host && backup?.id) {
+			try {
+				def freshBackup = morpheusContext.services.backup.find(new DataQuery().withFilter("id", backup.id).withJoins(["backupProvider", "backupProvider.account"]))
+				if(freshBackup?.backupProvider?.host) {
+					backupProvider = freshBackup.backupProvider
+				}
+			} catch(e) {
+				log.warn("Unable to reload backupProvider via backup join for backup ${backup?.id}: ${e.message}")
+			}
+		}
+		if(!backupProvider?.host && backup?.backupProvider?.id) {
+			try {
+				def reloadedProvider = morpheusContext.services.backupProvider.get(backup.backupProvider.id)
+				if(reloadedProvider?.host) {
+					backupProvider = reloadedProvider
+				}
+			} catch(e) {
+				log.warn("Unable to reload backupProvider by id for backup ${backup?.id}: ${e.message}")
+			}
+		}
+		return backupProvider
+	}
+
+	/**
 	 * Add additional configurations to a backup. Morpheus will handle all basic configuration details, this is a
 	 * convenient way to add additional configuration details specific to this backup provider.
 	 * @param backupModel the current backup the configurations are applied to.
@@ -97,7 +129,7 @@ class CommvaultBackupExecutionProvider implements BackupExecutionProvider {
 		log.debug("createBackup {}:{} to job {} with opts: {}", backup.id, backup.name, backup.backupJob.id, opts)
 		ServiceResponse rtn = ServiceResponse.prepare()
 		try {
-			def backupProvider = backup.backupProvider
+			def backupProvider = resolveBackupProvider(backup)
 			def authConfig = plugin.getAuthConfig(backupProvider)
 			def backupJob = backup.backupJob
 			def server
@@ -136,7 +168,7 @@ class CommvaultBackupExecutionProvider implements BackupExecutionProvider {
 		log.debug("deleteBackup :: backup: {}, opts: {}", backup, opts)
 		def rtn = [success:false]
 		try {
-			def backupProvider = backup.backupProvider
+			def backupProvider = resolveBackupProvider(backup)
 			def authConfig = plugin.getAuthConfig(backupProvider)
 
 			def workload = morpheusContext.services.workload.get(backup.containerId)
@@ -197,7 +229,7 @@ class CommvaultBackupExecutionProvider implements BackupExecutionProvider {
 		log.debug("deleting backup result {}", backupResult)
 		def rtn = [success:false]
 
-		def backupProvider = backupResult.backup?.backupProvider
+		def backupProvider = resolveBackupProvider(backupResult.backup)
 		def authConfig = plugin.getAuthConfig(backupProvider)
 		def storagePolicyId = backupResult.backup?.backupJob?.getConfigProperty('storagePolicyId')
 
@@ -294,7 +326,7 @@ class CommvaultBackupExecutionProvider implements BackupExecutionProvider {
 	def initializeVmSubclient(Backup backup, Map opts) {
 		def rtn = [success:false]
 		try {
-			def backupProvider = backup.backupProvider
+			def backupProvider = resolveBackupProvider(backup)
 			def authConfig = plugin.getAuthConfig(backupProvider)
 			def jobConfig = backup.backupJob.getConfigMap()
 			def clientId = jobConfig.clientId
@@ -350,14 +382,14 @@ class CommvaultBackupExecutionProvider implements BackupExecutionProvider {
 	ServiceResponse<BackupExecutionResponse> executeBackup(Backup backup, BackupResult backupResult, Map executionConfig, Cloud cloud, ComputeServer computeServer, Map opts) {
 		log.debug("executeBackup: {}", backup)
 		ServiceResponse<BackupExecutionResponse> rtn = ServiceResponse.prepare(new BackupExecutionResponse(backupResult))
-		if(!backup.backupProvider?.enabled) {
+		def backupProvider = resolveBackupProvider(backup)
+		if(!backupProvider?.enabled) {
 			rtn.error = "Commvault backup integration is disabled"
 			return rtn
 		}
 
 		def results = [:]
 		try {
-			def backupProvider = backup.backupProvider
 			def authConfig = plugin.getAuthConfig(backupProvider)
 			if(authConfig) {
 				def subclientId = backup.getConfigProperty("vmSubclientId")
@@ -432,8 +464,8 @@ class CommvaultBackupExecutionProvider implements BackupExecutionProvider {
 		log.debug("refreshBackupResult -> backupResult: {}", backupResult)
 		ServiceResponse<BackupExecutionResponse> rtn = ServiceResponse.prepare(new BackupExecutionResponse(backupResult))
 		def backup = backupResult.backup
-		if(backup.backupProvider?.enabled) {
-			def backupProvider = backup.backupProvider
+		def backupProvider = resolveBackupProvider(backup)
+		if(backupProvider?.enabled) {
 			def authConfig = plugin.getAuthConfig(backupProvider)
 			def backupJobId = backupResult.externalId ?: backupResult.getConfigProperty('backupJobId')
 			Map backupJob = null
@@ -505,7 +537,7 @@ class CommvaultBackupExecutionProvider implements BackupExecutionProvider {
 		ServiceResponse response = ServiceResponse.prepare()
 		if(backupResult != null) {
 			try {
-				def backupProvider = backupResult.backup.backupProvider
+				def backupProvider = resolveBackupProvider(backupResult.backup)
 				def authConfig = plugin.getAuthConfig(backupProvider)
 				def backupJobId = backupResult.externalId ?: backupResult.getConfigProperty("backupJobId")
 

@@ -35,6 +35,47 @@ class CommvaultBackupJobProvider implements BackupJobProvider {
     }
 
     /**
+     * Returns the Morpheus Context for interacting with data stored in the Main Morpheus Application
+     * @return an implementation of the MorpheusContext for running Future based rxJava queries
+     */
+    MorpheusContext getMorpheus() {
+        return morpheusContext
+    }
+
+    /**
+     * Reload the backup job's associated BackupProvider with the host/port/username/password/credential fields
+     * fully hydrated. Accessing backupJob.backupProvider directly can return a proxy whose non-joined fields
+     * (host, port, username, password) come back null, so the backupProvider is re-fetched via an explicit join.
+     * Falls back to the in-memory association (and a plain id-based lookup) if the join-based fetch doesn't yield
+     * a provider, since a freshly created backup job may not yet be visible to an independent query within the
+     * same request.
+     */
+    private BackupProvider resolveBackupProvider(BackupJob backupJob) {
+        def backupProvider = backupJob?.backupProvider
+        if(!backupProvider?.host && backupJob?.id) {
+            try {
+                def freshBackupJob = morpheusContext.services.backupJob.find(new DataQuery().withFilter("id", backupJob.id).withJoins(["backupProvider", "backupProvider.account"]))
+                if(freshBackupJob?.backupProvider?.host) {
+                    backupProvider = freshBackupJob.backupProvider
+                }
+            } catch(e) {
+                log.warn("Unable to reload backupProvider via backupJob join for backupJob ${backupJob?.id}: ${e.message}")
+            }
+        }
+        if(!backupProvider?.host && backupJob?.backupProvider?.id) {
+            try {
+                def reloadedProvider = morpheusContext.services.backupProvider.get(backupJob.backupProvider.id)
+                if(reloadedProvider?.host) {
+                    backupProvider = reloadedProvider
+                }
+            } catch(e) {
+                log.warn("Unable to reload backupProvider by id for backupJob ${backupJob?.id}: ${e.message}")
+            }
+        }
+        return backupProvider
+    }
+
+    /**
      * Apply provider specific configurations to a {@link BackupJob}. The standard configurations are handled by Morpheus.
      * @param backupJobModel the backup job to apply the configuration changes to
      * @param config the configuration supplied by external inputs.
@@ -77,7 +118,7 @@ class CommvaultBackupJobProvider implements BackupJobProvider {
         log.debug("createBackupJob {} and {} ", backupJob, opts)
         ServiceResponse response = ServiceResponse.prepare()
         try {
-            def backupProvider = morpheusContext.services.backupProvider.get(backupJob.backupProvider.id)
+            def backupProvider = resolveBackupProvider(backupJob)
             def authConfig = plugin.getAuthConfig(backupProvider)
             if (opts.commvaultClient) {
                 // clear out the schedule so morpheus doesn't run the job
@@ -132,7 +173,7 @@ class CommvaultBackupJobProvider implements BackupJobProvider {
         log.debug("cloneBackupJob {}, {} and {}", sourceBackupJob, backupJob, opts)
         ServiceResponse response = ServiceResponse.prepare()
         try {
-            def backupProvider = morpheusContext.services.backupProvider.get(backupJob.backupProvider.id)
+            def backupProvider = resolveBackupProvider(backupJob)
             def sourceJobConfigMap = sourceBackupJob.getConfigMap()
             opts.commvaultClient = morpheusContext.async.referenceData.find(new DataQuery().withFilters(
                     [
@@ -187,7 +228,7 @@ class CommvaultBackupJobProvider implements BackupJobProvider {
     ServiceResponse deleteBackupJob(BackupJob backupJob, Map opts) {
         def rtn = [success:false]
         try {
-            def backupProvider = backupJob.backupProvider
+            def backupProvider = resolveBackupProvider(backupJob)
             def authConfig = plugin.getAuthConfig(backupProvider)
 
             rtn = CommvaultApiUtility.deleteSubclient(authConfig, backupJob.internalId)
@@ -215,13 +256,13 @@ class CommvaultBackupJobProvider implements BackupJobProvider {
     ServiceResponse executeBackupJob(BackupJob backupJob, Map opts) {
         log.debug("executeBackupJob: {}, {}", backupJob, opts)
         ServiceResponse<List<BackupExecutionResponse>> rtn = ServiceResponse.prepare(new ArrayList<BackupExecutionResponse>())
-        if(!backupJob.backupProvider?.enabled) {
+        def backupProvider = resolveBackupProvider(backupJob)
+        if(!backupProvider?.enabled) {
             return ServiceResponse.error("Commvault backup integration is disabled")
         }
 
         def results
         try {
-            def backupProvider = backupJob.backupProvider
             def authConfig = plugin.getAuthConfig(backupProvider)
             if(authConfig) {
                 def subclientId = backupJob.internalId

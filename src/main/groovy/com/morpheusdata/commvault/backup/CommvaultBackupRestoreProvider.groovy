@@ -32,6 +32,37 @@ class CommvaultBackupRestoreProvider implements BackupRestoreProvider {
 	}
 
 	/**
+	 * Reload the backup's associated BackupProvider with the host/port/username/password/credential fields fully
+	 * hydrated. Accessing backup.backupProvider directly can return a proxy whose non-joined fields (host, port,
+	 * username, password) come back null, so the backupProvider is re-fetched via an explicit join. Falls back to
+	 * the in-memory association (and a plain id-based lookup) if the join-based fetch doesn't yield a provider.
+	 */
+	private BackupProvider resolveBackupProvider(Backup backup) {
+		def backupProvider = backup?.backupProvider
+		if(!backupProvider?.host && backup?.id) {
+			try {
+				def freshBackup = morpheusContext.services.backup.find(new DataQuery().withFilter("id", backup.id).withJoins(["backupProvider", "backupProvider.account"]))
+				if(freshBackup?.backupProvider?.host) {
+					backupProvider = freshBackup.backupProvider
+				}
+			} catch(e) {
+				log.warn("Unable to reload backupProvider via backup join for backup ${backup?.id}: ${e.message}")
+			}
+		}
+		if(!backupProvider?.host && backup?.backupProvider?.id) {
+			try {
+				def reloadedProvider = morpheusContext.services.backupProvider.get(backup.backupProvider.id)
+				if(reloadedProvider?.host) {
+					backupProvider = reloadedProvider
+				}
+			} catch(e) {
+				log.warn("Unable to reload backupProvider by id for backup ${backup?.id}: ${e.message}")
+			}
+		}
+		return backupProvider
+	}
+
+	/**
 	 * Add additional configurations to a backup restore. Morpheus will handle all basic configuration details, this is a
 	 * convenient way to add additional configuration details specific to this backup restore provider.
 	 * @param backupResultModel backup result to be restored
@@ -120,7 +151,7 @@ class CommvaultBackupRestoreProvider implements BackupRestoreProvider {
 		try {
 			def originalContainer = morpheusContext.services.workload.get(backup.containerId)
 			def containerId = opts.containerId ?: backup?.containerId
-			def backupProvider = backup.backupProvider
+			def backupProvider = resolveBackupProvider(backup)
 			def authConfig = plugin.getAuthConfig(backupProvider)
 			def container = morpheusContext.services.workload.get(containerId)
 			def restoreConfig = backup.getConfigProperty("infrastructureConfig")
