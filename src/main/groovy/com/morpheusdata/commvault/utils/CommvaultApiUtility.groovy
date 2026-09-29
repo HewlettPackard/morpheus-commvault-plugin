@@ -371,7 +371,7 @@ class CommvaultApiUtility {
 			def responseData = results.data
 			rtn.restoreJobId = responseData.jobIds["@val"]
 		} else {
-			rtn.msg = results.errorMessage
+			rtn.msg = results.msg
 			rtn.errorCode = results.errorCode
 		}
 
