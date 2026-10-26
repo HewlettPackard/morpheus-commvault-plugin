@@ -88,6 +88,11 @@ dependencies {
 	}
 
 	implementation 'org.apache.commons:commons-compress:1.26.0'
+	constraints {
+		implementation('org.apache.commons:commons-lang3:3.18.0') {
+			because('commons-compress 1.26.0 pulls a commons-lang3 version with a known CVE')
+		}
+	}
 	implementation files('lib/xcpng-8.2.jar')
 
 }
