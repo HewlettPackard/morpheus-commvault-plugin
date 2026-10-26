@@ -87,7 +87,7 @@ dependencies {
 		exclude module: 'groovy-all'
 	}
 
-	implementation 'org.apache.commons:commons-compress:1.21'
+	implementation 'org.apache.commons:commons-compress:1.26.0'
 	implementation files('lib/xcpng-8.2.jar')
 
 }
