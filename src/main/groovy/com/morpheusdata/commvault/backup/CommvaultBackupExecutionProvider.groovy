@@ -238,6 +238,8 @@ class CommvaultBackupExecutionProvider implements BackupExecutionProvider {
 				.withFilter("externalId", storagePolicyId))
 
 		def backupJobId = backupResult.externalId ?: backupResult.getConfigProperty('backupJobId')
+		// the stored id is the VM admin job; data is aged by the child backup job
+		def dataJobId = resolveDataJobId(authConfig, backupResult, backupJobId)
 
 		// con't delete job if active vm's were backed up on the same job
 		def backupResultlist = morpheusContext.services.backup.backupResult.list(new DataQuery()
@@ -247,7 +249,7 @@ class CommvaultBackupExecutionProvider implements BackupExecutionProvider {
 
 		def sharedSubclient = backupJobId ? backupResultlist.size() > 0 : false
 		if(backupJobId && storagePolicy && !sharedSubclient) {
-			rtn = CommvaultApiUtility.deleteJob(authConfig, backupJobId, [storagePolicyName: storagePolicy.getConfigProperty("name"), storagePolicyCopyName: storagePolicy.getConfigProperty("copyName")])
+			rtn = CommvaultApiUtility.deleteJob(authConfig, dataJobId ?: backupJobId, [storagePolicyName: storagePolicy.getConfigProperty("name"), storagePolicyCopyName: storagePolicy.getConfigProperty("copyName")])
 
 		} else {
 			rtn.success = true
@@ -256,6 +258,30 @@ class CommvaultBackupExecutionProvider implements BackupExecutionProvider {
 		return ServiceResponse.create(rtn)
 	}
 
+	private resolveDataJobId(Map authConfig, BackupResult backupResult, backupJobId) {
+		def rtn = null
+		try {
+			def backup = backupResult.backup
+			def server = backup?.computeServerId ? morpheusContext.services.computeServer.get(backup.computeServerId) : null
+			if(!server && backup?.containerId) {
+				def workload = morpheusContext.services.workload.get(backup.containerId)
+				server = workload?.server?.id ? morpheusContext.services.computeServer.get(workload.server.id) : null
+			}
+			def vmGuid = server?.internalId
+			if(backupJobId && vmGuid) {
+				def job = CommvaultApiUtility.getVMJobForParentJob(authConfig, vmGuid, backupJobId.toString(), [:])?.result
+				rtn = job?.externalId
+				if(rtn) {
+					backupResult.setConfigProperty("parentJobId", backupJobId.toString())
+					backupResult.setConfigProperty("backupJobId", rtn)
+				}
+			}
+		} catch(e) {
+			log.warn("unable to resolve Commvault data job for ${backupJobId}: ${e.message}")
+		}
+		return rtn
+	}
+	
 	/**
 	 * A hook into the execution process. This method is called before the backup execution occurs.
 	 * @param backupModel the backup details associated with the backup execution
