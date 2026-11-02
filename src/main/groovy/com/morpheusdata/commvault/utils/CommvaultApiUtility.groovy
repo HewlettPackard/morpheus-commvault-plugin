@@ -558,7 +558,9 @@ class CommvaultApiUtility {
 		def body = "qoperation agedata -delbyjobid -j ${jobId} -sp '${opts.storagePolicyName}' -spc '${opts.storagePolicyCopyName}' -ft Q_DATA_LOG"
 
 		def results = callApi(authConfig.apiUrl, "${authConfig.basePath}/QCommand", authConfig.token, [format:'text/xml', body: body], 'POST')
-
+		if(!results.success) {
+			log.warn("deleteJob QCommand failed - command: ${body}, statusCode: ${results.errorCode}, response: ${results.error}")
+		}
 		if(results.success) {
 			def contentStr = results.data
 			if(contentStr?.contains("pruned successfully") || contentStr.contains("no jobs to prune")) {
@@ -669,7 +671,8 @@ class CommvaultApiUtility {
 			if(opts.format == 'json') {
 				rtn = httpApiClient.callJsonApi(url, path, null, null, requestOpts, method)
 			} else if(opts.format == 'text/xml') {
-				opts.headers['Content-Type'] = 'text/plain'
+				requestOpts.contentType = 'text/plain'
+				requestOpts.headers['Content-Type'] = 'text/plain'
 				rtn = httpApiClient.callApi(url, path, null, null, requestOpts, method)
 			} else {
 				rtn = httpApiClient.callXmlApi(url, path, null, null, requestOpts, method)
