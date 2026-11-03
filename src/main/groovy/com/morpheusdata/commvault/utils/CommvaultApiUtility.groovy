@@ -562,8 +562,9 @@ class CommvaultApiUtility {
 			log.warn("deleteJob QCommand failed - command: ${body}, statusCode: ${results.errorCode}, response: ${results.error}")
 		}
 		if(results.success) {
-			def contentStr = results.data
-			if(contentStr?.contains("pruned successfully") || contentStr.contains("no jobs to prune")) {
+			// this call uses the plain (non-json/xml) callApi variant, which never populates results.data, so content is safe to read here
+			def contentStr = results.content?.toLowerCase()
+			if(contentStr?.contains("pruned successfully") || contentStr?.contains("no jobs to prune")) {
 				rtn.success = true
 			} else {
 				rtn.msg = "Error deleting backup."
