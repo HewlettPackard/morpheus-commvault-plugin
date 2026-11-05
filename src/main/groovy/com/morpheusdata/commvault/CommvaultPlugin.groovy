@@ -29,6 +29,9 @@ class CommvaultPlugin extends Plugin {
 
     static apiBasePath = '/SearchSvc/CVWebService.svc'
 
+    private static final Map<Long, Map> authTokenCache = new java.util.concurrent.ConcurrentHashMap<>()
+    private static final long TOKEN_TTL_MS = 10 * 60 * 1000 // conservative; well under Commvault's session timeout
+
     @Override
     String getCode() {
         return 'commvault'
@@ -63,7 +66,25 @@ class CommvaultPlugin extends Plugin {
                 password:backupProvider.credentialData?.password ?: backupProvider.password,
                 basePath:apiBasePath
         ]
+        def cached = authTokenCache[backupProvider.id]
+        if(cached && (System.currentTimeMillis() - cached.fetchedAt) < TOKEN_TTL_MS) {
+            rtn.token = cached.token
+        }
         return rtn
+    }
+
+    // caches the token fetched for a backupProvider so subsequent calls in the same flow can reuse it instead of logging in again
+    def cacheAuthToken(BackupProvider backupProvider, String token) {
+        if(backupProvider?.id && token) {
+            authTokenCache[backupProvider.id] = [token: token, fetchedAt: System.currentTimeMillis()]
+        }
+    }
+
+    // drops a cached token, e.g. after a 401, so the next call fetches a fresh one
+    def evictAuthToken(BackupProvider backupProvider) {
+        if(backupProvider?.id) {
+            authTokenCache.remove(backupProvider.id)
+        }
     }
 
     MorpheusContext getMorpheusContext() {

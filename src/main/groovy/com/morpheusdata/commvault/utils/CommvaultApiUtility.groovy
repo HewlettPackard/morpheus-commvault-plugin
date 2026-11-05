@@ -218,7 +218,10 @@ class CommvaultApiUtility {
 				rtn.success = false
 				rtn.msg = response.errorMessage
 				rtn.errorCode = response.errorCode
+				log.debug("createSubclient failed, client: {}, subclient: {}, body: {}, response: {}", client, subclient, body, response)
 			}
+		} else {
+			log.debug("createSubclient call failed, client: {}, subclient: {}, body: {}, results: {}", client, subclient, body, results)
 		}
 
 		return rtn
@@ -319,6 +322,9 @@ class CommvaultApiUtility {
 				rtn.errorCode = response.errorCode
 				rtn.statusCode = results.errorCode
 			}
+		}
+		if(!rtn.success) {
+			log.debug("deleteSubclient: delete subclient call failed for subclientId {}: {}", subclientId, results)
 		}
 		return rtn
 	}
@@ -583,13 +589,17 @@ class CommvaultApiUtility {
 			def vmResponse = vmResults?.data
 			def clientId = vmResponse.vmStatusInfoList.client['@clientId']
 			if(clientId && clientId != "") {
-				def results = callApi(authConfig.apiUrl, "${authConfig.basePath}/Client/${clientId}", authConfig.token, [format:'xml'], 'DELETE')
+				def results = callApi(authConfig.apiUrl, "${authConfig.basePath}/Client/${clientId}", authConfig.token, [format:'xml', query: [forceDelete: 'true']], 'DELETE')
 				if(results.success) {
 					rtn.success = true
+				} else {
+					log.debug("deleteVMClient: delete client call failed for vmGuid {}, clientId {}: {}", vmGuid, clientId, results)
 				}
 			} else {
 				rtn.success = true
 			}
+		} else {
+			log.debug("deleteVMClient: VM lookup failed for vmGuid {}: {}", vmGuid, vmResults)
 		}
 		return rtn
 	}
