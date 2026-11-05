@@ -167,10 +167,9 @@ class CommvaultBackupExecutionProvider implements BackupExecutionProvider {
 	ServiceResponse deleteBackup(Backup backup, Map opts) {
 		log.debug("deleteBackup :: backup: {}, opts: {}", backup, opts)
 		def rtn = [success:false]
+		def backupProvider = resolveBackupProvider(backup)
+		def authConfig = plugin.getAuthConfig(backupProvider)
 		try {
-			def backupProvider = resolveBackupProvider(backup)
-			def authConfig = plugin.getAuthConfig(backupProvider)
-
 			def workload = morpheusContext.services.workload.get(backup.containerId)
 			def server = backup.containerId ? workload?.server : null
 			// if server doesn't exist check infrastructureConfig for the server map
@@ -178,6 +177,7 @@ class CommvaultBackupExecutionProvider implements BackupExecutionProvider {
 				server = backup.getConfigProperty("infrastructureConfig")?.server
 			}
 			if(server) {
+				boolean subclientRemoveOk = true
 				def subclientId = backup.backupJob?.internalId
 				if(subclientId) {
 					def subclientResults = CommvaultApiUtility.getSubclient(authConfig, subclientId)
@@ -185,26 +185,38 @@ class CommvaultBackupExecutionProvider implements BackupExecutionProvider {
 						def serverExternalId = server.externalId ?: backup.getConfigProperty("serverExternalId")
 						def subclientVM = subclientResults?.subclient?.vmContent?.children?.find { it.name == serverExternalId || it.name == server.internalId }
 						if(subclientVM) {
-							rtn = CommvaultApiUtility.removeVMFromSubclient(authConfig, subclientId, subclientVM.name, subclientVM.displayName, subclientVM.type)
-							if(rtn.errorCode && !rtn.success) {
-								rtn.success = true //this means its probably not found
-							}
-						} else {
-							rtn.success = true
+							def removeResults = CommvaultApiUtility.removeVMFromSubclient(authConfig, subclientId, subclientVM.name, subclientVM.displayName, subclientVM.type)
+							// a non-null errorCode here generally means the VM was already removed/not found
+							subclientRemoveOk = removeResults.success || removeResults.errorCode != null
 						}
-					} else if(rtn.statusCode == 404) {
-						rtn.success = true
-						return ServiceResponse.create(rtn)
+						// else: VM already not in subclient, nothing to do
+					} else if(subclientResults.statusCode != 404) {
+						subclientRemoveOk = false
+						log.debug("deleteBackup: getSubclient failed for backup ${backup.id}: ${subclientResults}")
 					}
 				}
 
 				// delete the on-demand backup subclient
+				boolean vmSubclientOk = true
 				def vmSubclientId = backup.getConfigProperty("vmSubclientId")
 				if(vmSubclientId) {
-					CommvaultApiUtility.deleteSubclient(authConfig, vmSubclientId)
+					def vmClientId = backup.getConfigProperty("vmClientId")
+					def vmBackupsetId = backup.getConfigProperty("vmBackupsetId")
+					def activeJobResults = CommvaultApiUtility.captureActiveSubclientBackup(authConfig, vmSubclientId, vmClientId, vmBackupsetId)
+					if(activeJobResults?.success && activeJobResults.data?.backupJobId) {
+						CommvaultApiUtility.killBackupJob(authConfig, activeJobResults.data.backupJobId)
+						sleep(10000) // give Commvault time to fully stop the killed job before retrying the delete
+					}
+					def deleteSubclientResults = CommvaultApiUtility.deleteSubclient(authConfig, vmSubclientId)
+					vmSubclientOk = deleteSubclientResults.success
 				}
 
-				CommvaultApiUtility.deleteVMClient(authConfig, server.internalId)
+				def vmClientResults = CommvaultApiUtility.deleteVMClient(authConfig, server.internalId)
+
+				rtn.success = subclientRemoveOk && vmSubclientOk && vmClientResults.success
+				if(!rtn.success) {
+					rtn.msg = "Failed to fully remove backup resources from Commvault"
+				}
 			} else {
 				rtn.success = true
 				rtn.msg = "Could not find source resource"
@@ -212,6 +224,8 @@ class CommvaultBackupExecutionProvider implements BackupExecutionProvider {
 		} catch (Throwable t) {
 			log.error(t.message, t)
 			throw new RuntimeException("Unable to remove backup:${t.message}", t)
+		} finally {
+			plugin.cacheAuthToken(backupProvider, authConfig?.token)
 		}
 		return ServiceResponse.create(rtn)
 	}
@@ -255,6 +269,7 @@ class CommvaultBackupExecutionProvider implements BackupExecutionProvider {
 			rtn.success = true
 		}
 
+		plugin.cacheAuthToken(backupProvider, authConfig?.token)
 		return ServiceResponse.create(rtn)
 	}
 
@@ -384,6 +399,8 @@ class CommvaultBackupExecutionProvider implements BackupExecutionProvider {
 				def vmClientId = (server.internalId ?: server.externalId) // use vmware internal ID, move this to the backup type service when split out.
 				def vmClientName = server.name + "_" + server.externalId
 				CommvaultApiUtility.addVMToSubclient(authConfig, rtn.subclientId, vmClientId, vmClientName)
+			} else {
+				log.debug("initializeVmSubclient: createSubclient failed for backup ${backup.id}: ${rtn}")
 			}
 
 		} catch(e) {

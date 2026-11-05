@@ -227,10 +227,9 @@ class CommvaultBackupJobProvider implements BackupJobProvider {
     @Override
     ServiceResponse deleteBackupJob(BackupJob backupJob, Map opts) {
         def rtn = [success:false]
+        def backupProvider = resolveBackupProvider(backupJob)
+        def authConfig = plugin.getAuthConfig(backupProvider)
         try {
-            def backupProvider = resolveBackupProvider(backupJob)
-            def authConfig = plugin.getAuthConfig(backupProvider)
-
             rtn = CommvaultApiUtility.deleteSubclient(authConfig, backupJob.internalId)
             if(!rtn.success) {
                 def subclientResponse = CommvaultApiUtility.getSubclient(authConfig, backupJob.internalId)
@@ -241,6 +240,8 @@ class CommvaultBackupJobProvider implements BackupJobProvider {
         } catch (Throwable t) {
             log.error(t.message, t)
             throw new RuntimeException("Unable to remove backup job:${t.message}", t)
+        } finally {
+            plugin.cacheAuthToken(backupProvider, authConfig?.token)
         }
         return ServiceResponse.create(rtn)
     }
